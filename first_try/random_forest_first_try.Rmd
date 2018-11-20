@@ -119,7 +119,7 @@ fit<-randomForest(as.factor(class)~.,
                   )
 fit
 varImpPlot(fit)
-saveRDS(fit, "data/forests/fit1.rds") ## Save the prediction
+saveRDS(fit, "data/ouput/forests/fit1.rds") ## Save the prediction
 ```
 
 ## Predicting
@@ -148,8 +148,8 @@ predicted_plot<-raster::predict(test_fit_comb, fit, OOB=T) ## Predict subset
 ## Save everything 
 When you write the rasters with `writeRaster` the rasters still need to be projected once they are pulled into ArcMap.  I'm srue there is a way to save them with a projection, but I haven't figured it out yet. 
 ```{r}
-saveRDS(predicted_plot, "data/forests/predicted_raster.rds")
-saveRDS(predicted_whole, "data/forests/predicted_whole_raster.rds")
+saveRDS(predicted_plot, "data/output/forests/predicted_raster.rds")
+saveRDS(predicted_whole, "data/output/forests/predicted_whole_raster.rds")
 predicted_plot2<-predicted_plot
 
 
