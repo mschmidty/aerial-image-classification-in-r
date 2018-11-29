@@ -1,0 +1,107 @@
+---
+title: "Functions Test"
+author: "Michael Schmidt"
+date: "November 28, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+require(dplyr)
+require(stringr)
+require(raster)
+require(rgdal)
+require(rgeos)
+require(randomForest)
+```
+
+The raster list will control the entire flow of the function.  It is the primary loop. 
+
+## Gather file names
+
+```{r}
+gather_file_names<-function(raster.folder){
+  base::list.files(raster.folder)%>%
+    tools::file_path_sans_ext()%>%
+    tools::file_path_sans_ext()%>%
+    base::unique() ## May want to change this to just a vector and use this for just apply
+}
+```
+
+test the function
+```{r}
+gather_file_names("test_tiles")
+```
+
+
+
+## Read Raster and add ndvi
+```{r}
+
+read_raster<-function(raster.folder, raster.in.loop){
+  raster<-brick(paste0(paste(raster.folder, raster.in.loop,sep="/"), ".tif" ))
+  names(raster)<-c("b1", "b2", "b3", "b4") ## Rename Bands for ease of use
+  ndvi<-overlay(raster$b4, raster$b3, fun=function(x,y){(x-y)/(x+y)})
+  cov<-addLayer(raster,ndvi) ## Merge NDVI and the tiel imagery
+  names(cov)<-c("b1", "b2", "b3", "b4", "ndvi")
+  return(cov)
+}
+
+```
+
+
+## To pass on to other parts of the function
+```{r}
+raster_to_pass<-read_raster("test_tiles", "Basin0301")
+```
+
+
+## Read in shapefiles without file extension. 
+# TEST WITH BIG SHAPEFILE.
+
+```{r}
+read_shape_file <- function(shape.full.path){
+  temp<-stringr::str_split(shape.full.path, "/")
+  temp2<-readOGR(dsn=paste(head(temp[[1]], -1) , collapse = "/"), layer=paste(tail(temp[[1]], 1)))
+  temp2@data$code<-as.numeric(temp2@data$Class)
+  temp3<-crop(temp2, extent(raster_to_pass))%>%
+    rasterize(raster_to_pass, field="code")  ## Change this when you make the final function
+  names(temp3)<-"class"
+  return(temp3)
+}
+```
+
+### To pass the shapefile on to other function
+```{r}
+shape<-read_shape_file("test_shape/supervised12N")
+plot(shape)
+```
+
+
+
+clip the raster
+```{r}
+data_to_be_modeled<-crop(raster_to_pass, extent(shape))%>%
+  mask(shape)%>%
+  addLayer(shape)%>%
+  getValues()%>%
+  as.data.frame()%>%
+  filter(!is.na(class))
+```
+
+
+```{r}
+set.seed(415)
+fit<-randomForest(as.factor(class)~.,
+                  data=data_to_be_modeled, 
+                  importance=TRUE,
+                  ntree=200
+                  )
+fit
+varImpPlot(fit)
+```
+
+

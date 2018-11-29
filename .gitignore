@@ -1,2 +1,8 @@
 *.lock
 raster/
+test_tiles/*
+test_shape/*
+extra_shape/
+*.tif
+.Rproj.user/
+.rhistory

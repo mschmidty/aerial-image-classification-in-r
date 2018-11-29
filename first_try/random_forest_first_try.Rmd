@@ -94,19 +94,15 @@ train_brick<-addLayer(covmask2, classes)
 
 ##We don't have enough memory for this step. 
 I will need to run this step through again.  For some reason when the aerial raster is clipped to the geometry of the training polygons, all of the clipped out cells remain as NAs. Removing the NAs took too much memory and would time out. I eventually got it to work, by removing everything in memory and then running the `filter(train_table2, !is.na(class))` I believe, but I can't quite remember.  To do this, I may have needed to save the `train_table` as a RDS and then re-load it after restarting R. 
+
+# I re-ran this and it works!!!!!!!!!!!!
 ```{r}
-library(pryr)
 mem_used()
 memory.limit()
 train_table<-getValues(train_brick)
-saveRDS(train_table, "data/train_table2.rds")
-train_table<-readRDS("data/train_table2.rds")
-library(rgr)
-train_table2<-remove.na(train_table)
 train_table2<-as.tibble(train_table)
+rm(train_table)
 train_table3<-filter(train_table2, !is.na(class))
-train_table3
-
 ```
 
 ## Run Random Forests
