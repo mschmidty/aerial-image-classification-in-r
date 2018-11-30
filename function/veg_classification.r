@@ -28,6 +28,8 @@ single_random_forest_loop <- function( tile_name, folder_of_tiles, file_path_to_
     rasterize(ndvi, field="code")  ## Change this when you make the final function
   names(shape)<-"class"
   
+  rm(ndvi, temp, temp2, raster)
+  
   data_to_be_modeled<-crop(cov, extent(shape))%>%
     mask(shape)%>%
     addLayer(shape)%>%
@@ -41,23 +43,20 @@ single_random_forest_loop <- function( tile_name, folder_of_tiles, file_path_to_
                     ntree=200
   )
   
+  rm(data_to_be_modeled, cov, shape)
+  
   return(fit)
   
-  
-}
-
-single_random_forest_loop <- function( tile_name, folder_of_tiles, file_path_to_shape){
+  rm(fit)
   
   
-  ## read raster make ndvi layer and add it to the brick.
-  rasterName<-paste0(paste(folder_of_tiles, tile_name ,sep="/"), ".tif" )
-  return(rasterName)
   
 }
 
 
 
-## Looping trough tiles
+
+## Looping trough tiles and apply the single random forest loop to each tile.  
 
 build_model<-function(folder_of_tiles, file_path_to_shape){
   t<-base::list.files(folder_of_tiles)%>%
@@ -73,7 +72,9 @@ build_model<-function(folder_of_tiles, file_path_to_shape){
 
 start_time <- Sys.time()
 
-test_model<-build_model("test_tiles", "test_shape/supervised12N")
+set.seed(420)
+
+test_model<-build_model("test_tiles", "test_shape/training_polygons12N")
 
 end_time <- Sys.time()
 
