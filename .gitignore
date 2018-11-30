@@ -2,6 +2,7 @@
 raster/
 function/test_tiles/*
 function/test_shape/*
+function/models/*
 extra_shape/
 *.tif
 .Rproj.user/

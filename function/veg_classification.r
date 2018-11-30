@@ -40,7 +40,7 @@ single_random_forest_loop <- function( tile_name, folder_of_tiles, file_path_to_
   fit<-randomForest(as.factor(class)~.,
                     data=data_to_be_modeled, 
                     importance=TRUE,
-                    ntree=200
+                    ntree=200, norm.votes = FALSE
   )
   
   rm(data_to_be_modeled, cov, shape)
