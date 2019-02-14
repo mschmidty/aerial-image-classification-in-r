@@ -1,0 +1,171 @@
+---
+title: "Segmenation"
+author: "Michael Schmidt"
+date: "November 30, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Load the Libraries
+
+```{r}
+library(tidyverse)
+library(raster)
+library(rgdal)
+library(rgeos)
+```
+
+## Function Produce dataset for segmentation
+
+```{r}
+single_random_forest_loop <- function( tile_name, folder_of_tiles, file_path_to_shape){
+  
+  
+  ## read raster make ndvi layer and add it to the brick.
+  raster<-brick(paste0(paste(folder_of_tiles, tile_name ,sep="/"), ".tif" ))
+  names(raster)<-c("b1", "b2", "b3", "b4") ## Rename Bands for ease of use
+  ndvi<-overlay(raster$b4, raster$b3, fun=function(x,y){(x-y)/(x+y)})
+  cov<-addLayer(raster,ndvi) ## Merge NDVI and the tile imagery
+  names(cov)<-c("b1", "b2", "b3", "b4", "ndvi")
+  
+  ## parse and read shapefile
+  temp<-stringr::str_split(file_path_to_shape, "/")
+  temp2<-readOGR(dsn=paste(head(temp[[1]], -1) , collapse = "/"), layer=paste(tail(temp[[1]], 1)))
+  temp2@data$code<-as.numeric(temp2@data$Class)
+  shape<-crop(temp2, extent(cov))%>%
+    rasterize(ndvi, field="code")  ## Change this when you make the final function
+  names(shape)<-"class"
+  
+  rm(ndvi, temp, temp2, raster)
+  
+  data_to_be_modeled<-crop(cov, extent(shape))%>%
+    mask(shape)%>%
+    addLayer(shape)%>%
+    getValues()%>%
+    as.data.frame()%>%
+    filter(!is.na(class))
+  
+  saveRDS(data_to_be_modeled, paste0("tabular_data/", tile_name, ".rds"))
+  
+  rm(data_to_be_modeled)
+}
+
+build_model<-function(folder_of_tiles, file_path_to_shape){
+  t<-base::list.files(folder_of_tiles)%>%
+    tools::file_path_sans_ext()%>%
+    tools::file_path_sans_ext()%>%
+    base::unique() ## May want to change this to just a vector and use this for just apply
+  
+  t2<-folder_of_tiles
+  t3<-file_path_to_shape
+  
+    lapply(t, single_random_forest_loop, t2, t3)
+}
+```
+
+### Run function to creat datasets
+```{r}
+build_model("test_tiles", "test_shape/training_polygons12N")
+```
+
+## Read the Data
+
+```{r}
+data1<-as.tibble(readRDS("tabular_data/Basin0301.rds"))%>%
+  mutate(source="Basin0301")
+data2<-as.tibble(readRDS("tabular_data/SM_GypsumGapNW_0103_180611.rds"))%>%
+  mutate(source="GypNW0103")
+data1
+data2
+```
+
+```{r}
+data<-rbind(data1, data2)
+```
+
+##Plot
+```{r}
+data%>%
+  ggplot(aes(ndvi))+
+    geom_density(aes(fill=as.factor(class)), alpha=0.8)+
+    theme_classic()
+```
+
+```{r}
+data%>%
+  ggplot(aes(b1))+
+    geom_density(aes(fill=as.factor(class)), alpha=0.8)+
+    theme_classic()
+```
+
+```{r}
+data%>%
+  ggplot(aes(b2))+
+    geom_density(aes(fill=as.factor(class)), alpha=0.8)+
+    theme_classic()
+```
+
+```{r}
+data%>%
+  ggplot(aes(b4))+
+    geom_density(aes(fill=as.factor(class)), alpha=0.8)+
+    theme_classic()
+```
+
+```{r}
+data%>%
+  group_by(as.factor(class))%>%
+  summarize(ndvi_min = quantile(ndvi, .05), 
+            ndvi_max = quantile(ndvi, .95),
+            b1_min = quantile(b1, .05), 
+            b1_max = quantile(b1, .95),
+            b2_min = quantile(b2, .05), 
+            b2_max = quantile(b2, .95),
+            b3_min = quantile(b3, .05), 
+            b3_max = quantile(b3, .95),
+            b4_min = quantile(b4, .05), 
+            b4_max = quantile(b4, .95)
+            )
+```
+
+
+prediction
+```{r}
+class_predict<- data%>%
+  mutate(class1 = ifelse(ndvi>0.113 & ndvi < 0.287 & b1>35780 & b1<45857 & b2>30048 & b2 < 43077 & b3 > 23906 & b3 < 36971 & b4 > 42391 & b4<49233, 1, 0 ))%>%
+  filter(class1==1 | class==1)%>%
+  mutate(correct = ifelse(class==class1, 1, 0))
+
+sum(class_predict$correct==1)/sum(class_predict$correct==class_predict$correct)
+  
+
+View(class_predict)
+
+```
+
+```{r}
+data%>%
+   group_by(as.factor(class))%>%
+   summarize(ndvi_min = quantile(ndvi, .10), 
+             ndvi_max = quantile(ndvi, .90),
+             b1_min = min(b1), 
+             b1_max = max(b1),
+             b2_min = min(b2), 
+             b2_max = max(b2),
+             b3_min = min(b3), 
+             b3_max = max(b3),
+             b4_min = min(b4), 
+             b4_max = max(b4)
+             )
+
+```
+
+
+
+
+
+
+
